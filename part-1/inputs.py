@@ -1,5 +1,7 @@
 import random
 
+# Hello
+
 file = open("100.in","r+")
 file.truncate(0)
 

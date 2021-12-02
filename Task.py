@@ -85,6 +85,15 @@ class Task:
         minutes_late = max(0, minutes_late)
         return self.get_max_benefit() * math.exp(-0.0170 * minutes_late)
 
+    def get_profit(self, minutes: int) -> int:
+        """
+        Returns profit recieved when completed at time minutes
+        """
+        if minutes > self.deadline:
+            return self.get_late_benefit(minutes - self.deadline)
+        else:
+            return self.perfect_benefit
+
     def __str__(self):
         """
         Generates a readable string representation of a task

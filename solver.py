@@ -6,9 +6,10 @@ class Ant:
     """
     Ant to traverse jobs. Keeps track of it's path and current profit.
     """
-    def __init__(self, n, tasks, task=None):
+    def __init__(self, n, tasks, alpha, beta, gamma, task=None):
         self.tasks = tasks
         self.task = task
+        self.alpha, self.beta, self.gamma = alpha, beta, gamma
         self.time = 0
         self.profit = 0
         self.visited = [False]*n
@@ -34,7 +35,10 @@ class Ant:
         for task in self.tasks:
             if self.can_do_task(task):
                 # Can change the weights to be scaled by values to prefer any feature
-                weights.append(task.get_profit(self.time + task.get_duration()))
+                profit = self.gamma * float(task.get_profit(self.time + task.get_duration()))
+                duration = self.alpha/float(task.get_duration())
+                deadline = self.beta/float(task.get_deadline())
+                weights.append(profit+duration+deadline)
             else:
                 weights.append(0)
         return weights
@@ -48,6 +52,9 @@ def solve(tasks):
         output: list of igloos in order of polishing  
     """
     n = len(tasks)
+    alpha = 10.0
+    beta = 100.0
+    gamma = 1.0
 
     def move_ants(ants, tasks):
         done = [False]*len(ants)
@@ -67,10 +74,9 @@ def solve(tasks):
                     else:
                         done[i] = True
 
-    ants = [Ant(n, tasks),Ant(n, tasks),Ant(n, tasks),Ant(n, tasks)]
+    ants = [Ant(n, tasks, alpha, beta, gamma) for i in range(5)]
     move_ants(ants, tasks)
-    for ant in ants:
-        print(ant.profit)
+    print(max([ant.profit for ant in ants]))
     return []
 
 
@@ -78,7 +84,7 @@ def solve(tasks):
 
 # Here's an example of how to run your solver.
 if __name__ == '__main__':
-    tasks = read_input_file('part-1/test.in')
+    tasks = read_input_file('inputs/small/small-90.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

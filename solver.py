@@ -13,8 +13,6 @@ class Ant:
         self.profit = 0
         self.visited = [False]*n
         self.path = []
-        self.done = False
-        self.n = n
 
     def clear(self):
         """
@@ -39,8 +37,6 @@ class Ant:
                 weights.append(task.get_profit(self.time + task.get_duration()))
             else:
                 weights.append(0)
-        if weights == [0]*self.n:
-            self.done = True
         return weights
 
 
@@ -52,33 +48,37 @@ def solve(tasks):
         output: list of igloos in order of polishing  
     """
     n = len(tasks)
-    ants = [Ant(n, tasks), Ant(n, tasks), Ant(n, tasks)]
-    while not move_ants(ants, tasks):
-        pass
-    return []
 
-def move_ants(ants, tasks):
+    def move_ants(ants, tasks):
+        done = [False]*len(ants)
+        done_weights = [0]*n
+        while False in done:
+            for i in range(len(ants)):
+                if not done[i]:
+                    ant = ants[i]
+                    weights = ant.get_weights()
+                    if weights != done_weights:
+                        next_task = random.choices(tasks, weights)[0]
+                        id = next_task.get_task_id()
+                        ant.time += next_task.get_duration()
+                        ant.profit += next_task.get_profit(ant.time)
+                        ant.path.append(id)
+                        ant.visited[id-1] = True
+                    else:
+                        done[i] = True
+
+    ants = [Ant(n, tasks),Ant(n, tasks),Ant(n, tasks),Ant(n, tasks)]
+    move_ants(ants, tasks)
     for ant in ants:
-        all_done = True
-        if not ant.done:
-            all_done = False
-            weights = ant.get_weights()
-            if sum(weights) == 0:
-                return True
-            next_task = random.choices(tasks, weights)[0]
-            id = next_task.get_task_id()
-            ant.time += next_task.get_duration()
-            ant.profit += next_task.get_profit(ant.time)
-            ant.path.append(id)
-            ant.visited[id-1] = True
-    return all_done
+        print(ant.profit)
+    return []
 
 
 #change
 
 # Here's an example of how to run your solver.
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/large/large-100.in')
+    tasks = read_input_file('part-1/test.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

@@ -33,7 +33,6 @@ def solve(tasks):
 
         def can_do_task(self, task):
             return self.time + task.get_duration() <= 1440 and not self.visited[task.get_task_id()-1]
-            
 
         def get_weights(self):
             """

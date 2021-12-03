@@ -33,7 +33,6 @@ def solve(tasks):
 
         def can_do_task(self, task):
             return self.time + task.get_duration() <= 1440 and not self.visited[task.get_task_id()-1]
-            
 
         def get_weights(self):
             """
@@ -50,9 +49,9 @@ def solve(tasks):
                 if self.can_do_task(task):
                     # Calculate numerator of probability with heuristic and pheromone
                     profit = gamma * float(task.get_profit(self.time + task.get_duration()))
-                    duration = alpha-float(task.get_duration())
-                    deadline = beta-float(task.get_deadline())
-                    heuristic = (profit)**phi * phero[current_task_id][task.get_task_id()]**lam
+                    duration = alpha - float(task.get_duration())
+                    deadline = beta - float(task.get_deadline())
+                    heuristic = (profit) ** phi * phero[current_task_id][task.get_task_id()] ** lam
                     heuristics.append(heuristic)
                     heuristics_sum += heuristic
                 else:

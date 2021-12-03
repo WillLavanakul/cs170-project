@@ -90,38 +90,40 @@ def solve(tasks):
             if ant.profit > best_profit:
                 best_profit = ant.profit
                 best_path = ant.path[1:]
-        # for i in range(n+1):
-        #     for j in range(n+1):
-        #         phero[i][j] = .85*phero[i][j]
+        for i in range(n+1):
+            for j in range(n+1):
+                phero[i][j] = .95*phero[i][j]
         for ant in ants:
             path = ant.path
             profit = ant.profit
             for i in range(len(path)-1):
                 u = path[i]
                 v = path[i+1]
-                phero[u][v] += (profit/sum_profits)
+                phero[u][v] += (profit/best_profit)**50
         return best_profit, best_path
     
     max_profit = 0
     max_path = []
     iter_profit_history = []
-    for i in range(10):
-        ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(10)]
+    for i in range(100):
+        ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(25)]
         move_ants(ants, tasks)
         iter_profit, iter_path = update_phero(ants)
-        print(iter_path)
         print(iter_profit)
         iter_profit_history.append(iter_profit)
         if iter_profit > max_profit:
             max_profit = iter_profit
             max_path = iter_path
-    print(Ant(n, tasks, alpha, beta, gamma).get_weights())
+    a = Ant(n, tasks, alpha, beta, gamma)
+    w = a.get_weights()
+    for i in range(len(w)):
+        print(i+1, w[i])
     plt.plot(iter_profit_history)
     plt.show()
     return max_path
 
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/small/small-193.in')
+    tasks = read_input_file('samples/100.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):
@@ -135,3 +137,4 @@ if __name__ == '__main__':
 # inputs/large/large-16.in
 # inputs/large/large-247.in
 # inputs/small/small-193.in
+# samples/100.in

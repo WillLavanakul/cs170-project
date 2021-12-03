@@ -2,48 +2,6 @@ from parse import read_input_file, write_output_file
 import random
 import os
 
-class Ant:
-    """
-    Ant to traverse jobs. Keeps track of it's path and current profit.
-    """
-    def __init__(self, n, tasks, alpha, beta, gamma, task=None):
-        self.tasks = tasks
-        self.task = task
-        self.alpha, self.beta, self.gamma = alpha, beta, gamma
-        self.time = 0
-        self.profit = 0
-        self.visited = [False]*n
-        self.path = []
-
-    def clear(self):
-        """
-        Resets ant fields. This is so we dont have to reinitialize ants
-        on every iteration
-        """
-
-    def can_do_task(self, task):
-        return self.time + task.get_duration() <= 1440 and not self.visited[task.get_task_id()-1]
-        
-
-    def get_weights(self):
-        """
-        Given current state of ant, return list of weights for choosing
-        next job. Can only move to jobs not done or still have time left
-        to do.
-        """
-        weights = []
-        for task in self.tasks:
-            if self.can_do_task(task):
-                # Can change the weights to be scaled by values to prefer any feature
-                profit = self.gamma * float(task.get_profit(self.time + task.get_duration()))
-                duration = self.alpha/float(task.get_duration())
-                deadline = self.beta/float(task.get_deadline())
-                weights.append(profit+duration+deadline)
-            else:
-                weights.append(0)
-        return weights
-
-
 def solve(tasks):
     """
     Args:
@@ -51,10 +9,60 @@ def solve(tasks):
     Returns:
         output: list of igloos in order of polishing  
     """
+
     n = len(tasks)
-    alpha = 10.0
+    alpha = 60.0
     beta = 100.0
     gamma = 1.0
+    phi = 10.0
+    lam = 10.0
+    phero = [[1 for i in range(n+1)] for j in range(n+1)]
+
+    class Ant:
+        """
+        Ant to traverse jobs. Keeps track of it's path and current profit.
+        """
+        def __init__(self, n, tasks, alpha, beta, gamma, task=None):
+            self.tasks = tasks
+            self.task = task
+            self.time = 0
+            self.profit = 0
+            self.visited = [False]*n
+            self.path = [0]
+
+        def can_do_task(self, task):
+            return self.time + task.get_duration() <= 1440 and not self.visited[task.get_task_id()-1]
+            
+
+        def get_weights(self):
+            """
+            Given current state of ant, return list of weights for choosing
+            next job. Can only move to jobs not done or still have time left
+            to do.
+            """
+            heuristics_sum = 0
+            heuristics = []
+            current_task_id = 0
+            if self.task != None:
+                current_task_id = self.task.get_task_id()
+            for task in self.tasks:
+                if self.can_do_task(task):
+                    # Calculate numerator of probability with heuristic and pheromone
+                    profit = gamma * float(task.get_profit(self.time + task.get_duration()))
+                    duration = alpha/float(task.get_duration())
+                    deadline = beta/float(task.get_deadline())
+                    heuristic = (profit+duration+deadline)**phi * phero[current_task_id][task.get_task_id()]**lam
+                    heuristics.append(heuristic)
+                    heuristics_sum += heuristic
+                else:
+                    heuristics.append(0)
+            # Scale each probability with total hueristics and pheromone
+            if heuristics_sum:
+                for i in range(n):
+                    heuristics[i] = heuristics[i]/heuristics_sum
+            else:
+                return heuristics
+            return heuristics
 
     def move_ants(ants, tasks):
         done = [False]*len(ants)
@@ -74,17 +82,38 @@ def solve(tasks):
                     else:
                         done[i] = True
 
-    ants = [Ant(n, tasks, alpha, beta, gamma) for i in range(5)]
-    move_ants(ants, tasks)
-    print(max([ant.profit for ant in ants]))
-    return []
+    def update_phero(ants):
+        sum_profits = 0
+        best_profit = 0
+        best_path = []
+        for ant in ants:
+            sum_profits += ant.profit
+            if ant.profit > best_profit:
+                best_profit = ant.profit
+                best_path = ant.path[1:]
+        for ant in ants:
+            path = ant.path
+            profit = ant.profit
+            for i in range(len(path)-1):
+                u = path[i]
+                v = path[i+1]
+                phero[u][v] += 1/profit
+        return best_profit, best_path
+    
+    max_profit = 0
+    max_path = []
+    for i in range(10):
+        ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(10)]
+        move_ants(ants, tasks)
+        iter_profit, iter_path = update_phero(ants)
+        if iter_profit > max_profit:
+            max_profit = iter_profit
+            max_path = iter_path
+        print(max_profit)
+    return max_path
 
-
-#change
-
-# Here's an example of how to run your solver.
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/small/small-90.in')
+    tasks = read_input_file('inputs/large/large-16.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

@@ -51,7 +51,7 @@ def solve(tasks):
                     profit = gamma * float(task.get_profit(self.time + task.get_duration()))
                     duration = alpha/float(task.get_duration())
                     deadline = beta/float(task.get_deadline())
-                    heuristic = phero[current_task_id][task.get_task_id()]**lam
+                    heuristic = (profit) * phero[current_task_id][task.get_task_id()]**lam
                     heuristics.append(heuristic)
                 else:
                     heuristics.append(0)
@@ -94,7 +94,7 @@ def solve(tasks):
             for i in range(len(path)-1):
                 u = path[i]
                 v = path[i+1]
-                phero[u][v] += (profit/best_profit)**50
+                phero[u][v] += (profit/best_profit)**25
         return best_profit, best_path
     
     max_profit = 0
@@ -118,7 +118,7 @@ def solve(tasks):
     return max_path
 
 if __name__ == '__main__':
-    tasks = read_input_file('samples/100.in')
+    tasks = read_input_file('inputs/large/large-16.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

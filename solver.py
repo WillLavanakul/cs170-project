@@ -14,8 +14,8 @@ def solve(tasks):
     n = len(tasks)
     alpha = 60.0
     beta = 1440.0
-    gamma = 1.0
-    phi = 1.0
+    gamma = 20.0
+    phi = 20.0
     lam = 1.0
     phero = [[1 for i in range(n+1)] for j in range(n+1)]
 
@@ -50,7 +50,7 @@ def solve(tasks):
                     profit = gamma * float(task.get_profit(self.time + task.get_duration()))
                     duration = alpha/float(task.get_duration())
                     deadline = beta/float(task.get_deadline())
-                    heuristic = (profit) * phero[current_task_id][task.get_task_id()]**lam
+                    heuristic = (profit)**phi * phero[current_task_id][task.get_task_id()]**lam
                     heuristics.append(heuristic)
                 else:
                     heuristics.append(0)
@@ -75,7 +75,7 @@ def solve(tasks):
                     else:
                         done[i] = True
 
-    def update_phero(ants):
+    def update_phero(ants, t):
         sum_profits = 0
         best_profit = 0
         best_path = []
@@ -86,14 +86,14 @@ def solve(tasks):
                 best_path = ant.path[1:]
         for i in range(n+1):
             for j in range(n+1):
-                phero[i][j] = .95*phero[i][j]
+                phero[i][j] = .9*phero[i][j]
         for ant in ants:
             path = ant.path
             profit = ant.profit
             for i in range(len(path)-1):
                 u = path[i]
                 v = path[i+1]
-                phero[u][v] += (profit/best_profit)**25
+                phero[u][v] += (profit/best_profit)**t
         return best_profit, best_path
     
     max_profit = 0
@@ -102,7 +102,7 @@ def solve(tasks):
     for i in range(100):
         ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(25)]
         move_ants(ants, tasks)
-        iter_profit, iter_path = update_phero(ants)
+        iter_profit, iter_path = update_phero(ants, i)
         print(iter_profit)
         iter_profit_history.append(iter_profit)
         if iter_profit > max_profit:
@@ -114,6 +114,7 @@ def solve(tasks):
         print(i+1, w[i])
     plt.plot(iter_profit_history)
     plt.show()
+    print(max_profit)
     return max_path
 
 if __name__ == '__main__':

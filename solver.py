@@ -1,6 +1,7 @@
 from parse import read_input_file, write_output_file
 import random
 import matplotlib.pyplot as plt
+import math
 import os
 
 def solve(tasks):
@@ -14,16 +15,16 @@ def solve(tasks):
     n = len(tasks)
     alpha = 60.0
     beta = 1440.0
-    gamma = 20.0
-    phi = 20.0
-    lam = 1.0
+    gamma = 1.0
+    phi = 1.0
+    lam = 2.0
     phero = [[1 for i in range(n+1)] for j in range(n+1)]
 
     class Ant:
         """
         Ant to traverse jobs. Keeps track of it's path and current profit.
         """
-        def __init__(self, n, tasks, alpha, beta, gamma, task=None):
+        def __init__(self, n, tasks, task=None):
             self.tasks = tasks
             self.task = task
             self.time = 0
@@ -47,10 +48,10 @@ def solve(tasks):
             for task in self.tasks:
                 if self.can_do_task(task):
                     # Calculate numerator of probability with heuristic and pheromone
-                    profit = gamma * float(task.get_profit(self.time + task.get_duration()))
+                    profit = float(task.get_profit(self.time + task.get_duration())) / gamma
                     duration = alpha/float(task.get_duration())
                     deadline = beta/float(task.get_deadline())
-                    heuristic = (profit)**phi * phero[current_task_id][task.get_task_id()]**lam
+                    heuristic = (profit) * (phero[current_task_id][task.get_task_id()]**lam)
                     heuristics.append(heuristic)
                 else:
                     heuristics.append(0)
@@ -81,44 +82,41 @@ def solve(tasks):
         best_path = []
         for ant in ants:
             sum_profits += ant.profit
+            iter_profit_history.append(ant.profit)
             if ant.profit > best_profit:
                 best_profit = ant.profit
-                best_path = ant.path[1:]
+                best_path = ant.path
+        print(best_path)
+        for i in range(len(best_path)-1):
+            u = best_path[i]
+            v = best_path[i+1]
+            phero[u][v] = phero[u][v] + 100*(best_profit/sum_profits)
         for i in range(n+1):
             for j in range(n+1):
-                phero[i][j] = .9*phero[i][j]
-        for ant in ants:
-            path = ant.path
-            profit = ant.profit
-            for i in range(len(path)-1):
-                u = path[i]
-                v = path[i+1]
-                phero[u][v] += (profit/best_profit)**t
+                phero[i][j] = (0.9)*phero[i][j]
         return best_profit, best_path
     
     max_profit = 0
     max_path = []
     iter_profit_history = []
     for i in range(100):
-        ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(25)]
+        ants = [Ant(n, tasks) for j in range(50)]
         move_ants(ants, tasks)
         iter_profit, iter_path = update_phero(ants, i)
-        print(iter_profit)
-        iter_profit_history.append(iter_profit)
+        # a = Ant(n, tasks)
+        # w = a.get_weights()
+        # for i in range(len(w)):
+        #         print(i+1, w[i])
         if iter_profit > max_profit:
             max_profit = iter_profit
             max_path = iter_path
-    a = Ant(n, tasks, alpha, beta, gamma)
-    w = a.get_weights()
-    for i in range(len(w)):
-        print(i+1, w[i])
     plt.plot(iter_profit_history)
     plt.show()
     print(max_profit)
     return max_path
 
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/large/large-16.in')
+    tasks = read_input_file('inputs/small/small-193.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

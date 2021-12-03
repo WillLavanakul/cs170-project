@@ -16,7 +16,7 @@ def solve(tasks):
     beta = 1440.0
     gamma = 1.0
     phi = 1.0
-    lam = 10.0
+    lam = 1.0
     phero = [[1 for i in range(n+1)] for j in range(n+1)]
 
     class Ant:
@@ -41,7 +41,6 @@ def solve(tasks):
             next job. Can only move to jobs not done or still have time left
             to do.
             """
-            heuristics_sum = 0
             heuristics = []
             current_task_id = 0
             if self.task != None:
@@ -50,11 +49,10 @@ def solve(tasks):
                 if self.can_do_task(task):
                     # Calculate numerator of probability with heuristic and pheromone
                     profit = gamma * float(task.get_profit(self.time + task.get_duration()))
-                    duration = alpha-float(task.get_duration())
-                    deadline = beta-float(task.get_deadline())
-                    heuristic = (profit)**phi * phero[current_task_id][task.get_task_id()]**lam
+                    duration = alpha/float(task.get_duration())
+                    deadline = beta/float(task.get_deadline())
+                    heuristic = phero[current_task_id][task.get_task_id()]**lam
                     heuristics.append(heuristic)
-                    heuristics_sum += heuristic
                 else:
                     heuristics.append(0)
             # Scale each probability with total hueristics and pheromone
@@ -87,29 +85,32 @@ def solve(tasks):
             if ant.profit > best_profit:
                 best_profit = ant.profit
                 best_path = ant.path[1:]
+        # for i in range(n+1):
+        #     for j in range(n+1):
+        #         phero[i][j] = .85*phero[i][j]
         for ant in ants:
             path = ant.path
             profit = ant.profit
             for i in range(len(path)-1):
                 u = path[i]
                 v = path[i+1]
-                phero[u][v] += profit/sum_profits
+                phero[u][v] += (profit/sum_profits)
         return best_profit, best_path
     
     max_profit = 0
     max_path = []
     iter_profit_history = []
-    for i in range(50):
-        ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(100)]
+    for i in range(10):
+        ants = [Ant(n, tasks, alpha, beta, gamma) for j in range(10)]
         move_ants(ants, tasks)
         iter_profit, iter_path = update_phero(ants)
+        print(iter_path)
         print(iter_profit)
         iter_profit_history.append(iter_profit)
         if iter_profit > max_profit:
             max_profit = iter_profit
             max_path = iter_path
-    for p in phero:
-        print(p)
+    print(Ant(n, tasks, alpha, beta, gamma).get_weights())
     plt.plot(iter_profit_history)
     plt.show()
     return max_path

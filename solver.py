@@ -15,9 +15,9 @@ def solve(tasks):
     n = len(tasks)
     alpha = 1440.0
     beta = 60.0
-    gamma = 1.0
+    gamma = 3.0
     phi = 2 # GREEDY PARAMATER
-    lam = 1
+    lam = 3
     phero = [[1.0 for i in range(n+1)] for j in range(n+1)]
     max_profit = 0
     max_path = []
@@ -83,12 +83,11 @@ def solve(tasks):
                 u = path[i]
                 v = path[i+1]
                 if delta:
-                    new_phero[u][v] = new_phero[u][v] + ((profit-worst_ant.profit)/delta)**10
+                    new_phero[u][v] = new_phero[u][v] + ((profit-worst_ant.profit)/delta)**20
                 else:
                     new_phero[u][v] = new_phero[u][v] + 1
         iter_profit_history.append(best_ant.profit)
-        print(best_ant.profit)
-        return new_phero
+        return new_phero, best_ant
 
     def move_ants(ants, tasks):
         p = phero
@@ -109,23 +108,17 @@ def solve(tasks):
                     ant.visited[next_task.get_task_id()-1] = True
 
     
-    
-    for i in range(100):
-        ants = [Ant(n, tasks) for j in range(5)]
+    max_ant = Ant(n, tasks)
+    for i in range(5):
+        ants = [Ant(n, tasks) for j in range(10)]
         move_ants(ants, tasks)
-        phero = update_phero(ants, i)
-        if i == 20:
-            phero = [[1.0 for i in range(n+1)] for j in range(n+1)]
-    plt.plot(iter_profit_history)
-    plt.show()
-    a = Ant(n, tasks)
-    w = a.get_weights()
-    print(max_profit)
-    print(max_path)
-    return max_path
+        phero, best_ant = update_phero(ants, i)
+        if best_ant.profit > max_ant.profit:
+            max_ant = best_ant
+    return max_path[1:]
 
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/large/large-247.in')
+    tasks = read_input_file('inputs/large/large-16.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

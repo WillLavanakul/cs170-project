@@ -1,6 +1,7 @@
 from parse import read_input_file, write_output_file
 import random
 import matplotlib.pyplot as plt
+import numpy as np
 import math
 import os
 
@@ -13,15 +14,12 @@ def solve(tasks):
     """
 
     n = len(tasks)
-    alpha = 1440.0
-    beta = 60.0
-    gamma = 3.0
-    phi = 2 # GREEDY PARAMATER
-    lam = 3
+    alpha = 2.0
+    beta = 2.0
+    rho = 0.001
     phero = [[1.0 for i in range(n+1)] for j in range(n+1)]
-    max_profit = 0
-    max_path = []
-    iter_profit_history = []
+    min_cost = 0
+    min_path = []
 
     class Ant:
         """
@@ -30,10 +28,11 @@ def solve(tasks):
         def __init__(self, n, tasks, task=None):
             self.tasks = tasks
             self.task = task
-            self.time = 0
+            self.time = 1
             self.profit = 0
             self.visited = [False]*n
             self.path = [0]
+            self.iter = 0
         
         def clear(self):
             self.task = None
@@ -41,84 +40,110 @@ def solve(tasks):
             self.profit = 0
             self.visited = [False]*n
             self.path = [0]
+            self.iter += 1
 
         def can_do_task(self, task):
-            return self.time + task.get_duration() <= 1440 and not self.visited[task.get_task_id()-1]
+            return not self.visited[task.get_task_id()-1]
 
-        def get_weights(self):
+        def get_weights(self, phero):
             weights = []
-            max_weight = 0
+            total_weight = 0
             if self.task == None:
                 current_id = 0
             else:
                 current_id = self.task.get_task_id()
-            for task in self.tasks:
+            for i in range(len(self.tasks)):
+                task = self.tasks[i]
                 if self.can_do_task(task):
-                    profit = gamma * task.get_profit(self.time + task.get_duration())
-                    duration = beta / task.get_duration()
-                    deadline = alpha/ task.get_deadline()
-                    heuristic = profit*duration*deadline
+                    profit = task.get_profit(self.time+task.get_duration())
+                    heuristic = ((profit*(10/task.get_duration()))**alpha)*(phero[current_id][i+1]**beta)
                     weights.append(heuristic)
-                    max_weight = max(heuristic, max_weight)
+                    total_weight += heuristic
                 else:
                     weights.append(0)
-            if max_weight > 0:
+            if total_weight > 0:
                 for i in range(len(weights)):
-                    weights[i] = ((weights[i] / max_weight)**phi) * (phero[current_id][i+1]**lam)
+                    weights[i] /= total_weight
             return weights
             
     def update_phero(ants, t):
-        for i in range(n+1):
-            for j in range(n+1):
-                phero[i][j] *= 0.9
-        new_phero = phero[:]
+        deposit = [[0.0 for i in range(n+1)] for j in range(n+1)]
         best_ant = max(ants, key=lambda a:a.profit)
-        worst_ant = min(ants, key=lambda a:a.profit)
-        delta = best_ant.profit - worst_ant.profit
-        iter_path = best_ant.path
         for ant in ants:
             path = ant.path
             profit = ant.profit
-            for i in range(len(path)-1):
+            for i in range(min(len(path)-1, t+1)):
                 u = path[i]
                 v = path[i+1]
-                if delta:
-                    new_phero[u][v] = new_phero[u][v] + ((profit-worst_ant.profit)/delta)**20
-                else:
-                    new_phero[u][v] = new_phero[u][v] + 1
-        iter_profit_history.append(best_ant.profit)
-        return new_phero, best_ant
+                deposit[u][v] += (ant.profit)
+        for i in range(n+1):
+            for j in range(n+1):
+                phero[i][j] = (1.0)*phero[i][j] + deposit[i][j]**0.2
+        a = Ant(n, tasks)
+        # plt.plot(a.get_weights(phero))
+        # plt.show()
+        # a.task = tasks[18]
+        # a.visited[18] = True
+        # plt.plot(a.get_weights(phero))
+        # plt.show()
+        # a.task = tasks[34]
+        # a.visited[34] = True
+        # plt.plot(a.get_weights(phero))
+        # plt.show()
+        # print("NEW")
+        return phero, best_ant
 
-    def move_ants(ants, tasks):
-        p = phero
+    def move_ants(ants, tasks, phero, i):
         done = [False]*len(ants)
         done_weights = [0]*n
         while False in done:
             for ants_index in range(len(ants)):
                 ant = ants[ants_index]
-                weights = ant.get_weights()
+                weights = ant.get_weights(phero)
                 if weights == done_weights:
                     done[ants_index] = True
                 else:
                     next_task = random.choices(tasks, weights)[0]
                     ant.task = next_task
                     ant.path.append(next_task.get_task_id())
-                    ant.time += next_task.get_duration()
+                    ant.time += next_task.get_duration() + 1
                     ant.profit += next_task.get_profit(ant.time)
-                    ant.visited[next_task.get_task_id()-1] = True
+                    ant.visited[next_task.get_task_id()-1] = True   
+        return done
 
-    
-    max_ant = Ant(n, tasks)
-    for i in range(5):
+
+
+    max_profit = 0
+    last_i = 0
+    for i in range(100000000):
         ants = [Ant(n, tasks) for j in range(10)]
-        move_ants(ants, tasks)
+        move_ants(ants, tasks, phero, i)
         phero, best_ant = update_phero(ants, i)
-        if best_ant.profit > max_ant.profit:
-            max_ant = best_ant
-    return max_path[1:]
+        if i-last_i > 50:
+            print(i)
+            phero = [[phero[i][j]**0.2 for i in range(n+1)] for j in range(n+1)]
+            # plt.plot(phero[19])
+            # plt.show()
+            last_i = i
+            #print(best_ant.path)
+        if best_ant.profit > max_profit:
+            last_i = i
+            max_profit = best_ant.profit
+            print(max_profit, i)
+        
+    # Show plot
+    plt.show()
+    print(max_profit)
+    return []
+
+def over_time(path, tasks):
+    time = 1
+    for i in path:
+        time += tasks[i-1].duration
+    return time > 1440
 
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/large/large-16.in')
+    tasks = read_input_file('inputs/small/small-193.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):
@@ -126,6 +151,8 @@ if __name__ == '__main__':
     #         tasks = read_input_file('inputs/' + input_path + "/" + file_name)
     #         print('inputs/' + input_path + "/" + file_name)
     #         output = solve(tasks)
+    #         if over_time(output, tasks):
+    #             raise ValueError('A very specific bad thing happened.')
     #         write_output_file(output_path, output)
 
 # part-1/test.in

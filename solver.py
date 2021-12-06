@@ -14,9 +14,9 @@ def solve(tasks):
     """
 
     n = len(tasks)
-    alpha = 2.0
-    beta = 2.0
-    rho = 0.001
+    alpha = 6.0
+    beta = 3.0
+    rho = 0.1
     phero = [[1.0 for i in range(n+1)] for j in range(n+1)]
     min_cost = 0
     min_path = []
@@ -56,7 +56,7 @@ def solve(tasks):
                 task = self.tasks[i]
                 if self.can_do_task(task):
                     profit = task.get_profit(self.time+task.get_duration())
-                    heuristic = ((profit*(10/task.get_duration()))**alpha)*(phero[current_id][i+1]**beta)
+                    heuristic = ((profit*(40/task.get_duration())*(500/task.get_deadline()))**alpha)*(phero[current_id][i+1]**beta)
                     weights.append(heuristic)
                     total_weight += heuristic
                 else:
@@ -72,13 +72,13 @@ def solve(tasks):
         for ant in ants:
             path = ant.path
             profit = ant.profit
-            for i in range(min(len(path)-1, t+1)):
+            for i in range(len(path)-1):
                 u = path[i]
                 v = path[i+1]
                 deposit[u][v] += (ant.profit)
         for i in range(n+1):
             for j in range(n+1):
-                phero[i][j] = (1.0)*phero[i][j] + deposit[i][j]**0.2
+                phero[i][j] = (1-rho)*phero[i][j] + deposit[i][j]**0.2
         a = Ant(n, tasks)
         # plt.plot(a.get_weights(phero))
         # plt.show()
@@ -115,20 +115,20 @@ def solve(tasks):
 
     max_profit = 0
     last_i = 0
-    for i in range(100000000):
-        ants = [Ant(n, tasks) for j in range(10)]
+    max_path = []
+    for i in range(200):
+        ants = [Ant(n, tasks) for j in range(100)]
+        print(i)
         move_ants(ants, tasks, phero, i)
         phero, best_ant = update_phero(ants, i)
-        if i-last_i > 50:
-            print(i)
-            phero = [[phero[i][j]**0.2 for i in range(n+1)] for j in range(n+1)]
-            # plt.plot(phero[19])
-            # plt.show()
+        if i-last_i > 30:
+            phero = [[1 for i in range(n+1)] for j in range(n+1)]
             last_i = i
             #print(best_ant.path)
         if best_ant.profit > max_profit:
             last_i = i
             max_profit = best_ant.profit
+            max_path = best_ant.path
             print(max_profit, i)
         
     # Show plot
@@ -143,7 +143,7 @@ def over_time(path, tasks):
     return time > 1440
 
 if __name__ == '__main__':
-    tasks = read_input_file('inputs/small/small-193.in')
+    tasks = read_input_file('inputs/large/large-16.in')
     output = solve(tasks)
     # for input_path in os.listdir('inputs'):
     #    for file_name in os.listdir('inputs/' + input_path):

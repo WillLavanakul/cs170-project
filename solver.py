@@ -1,6 +1,7 @@
 from parse import read_input_file, write_output_file
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 import os
 
 class Solution():
@@ -28,12 +29,15 @@ def solve(tasks):
     """
     tabu = {}
     queue = []
-    initial, initial_hash = get_initial_solution(tasks)
+    initial, initial_hash = get_initial_solution(tasks, tabu)
     tabu[initial_hash] = 1
     max_profit = fitness(initial, tasks)[0]
+    tabu_initial = {initial_hash: 1}
     max_path = initial
+    global_profit = 0
+    global_path = []
     last_i = 0
-    for i in range(20000):
+    for i in range(6000):
         # Get neighbors from initiail and initialize local variables
         neighbors = get_neighbors(initial)
         local_profit = 0
@@ -52,27 +56,32 @@ def solve(tasks):
         # update global maximas if higher neighbor is found. Also redefine initial
         if local_profit > max_profit:
             last_i = i
-            print(local_profit)
             max_profit = local_profit
             max_path = local_path
             initial = max_path
         tabu[local_hash] = 1
+        tabu_initial[local_hash] = 1
         queue.append(local_hash)
-        if len(queue) > len(tasks)**0.5:
-            h = queue.pop(0)
-            tabu.pop(h)
-        if i - last_i > 1000:
-            initial, initial_hash = get_initial_solution(tasks)
+        if len(queue) > 200:
+            tabu.pop(queue.pop(0))
+        if i - last_i > 200:
+            initial, initial_hash = get_initial_solution(tasks, tabu)
+            while initial_hash in tabu_initial:
+                print(initial_hash)
+                initial, initial_hash = get_initial_solution(tasks, tabu)
+            if max_profit > global_profit:
+                print(max_profit)
+                global_profit = max_profit
+                global_path = max_path
+            max_profit = 0
             tabu[initial_hash] = 1
-            max_profit = fitness(initial, tasks)[0]
-            max_path = initial
             last_i = i
     # print(fitness(max_path, tasks))
-    max_path = fitness(max_path, tasks)[1]
+    global_path = fitness(global_path, tasks)[1]
     # print(fitness(max_path, tasks))
-    # print(check_solution(max_path, tasks))
-    print(max_profit)
-    return max_path
+    print(check_solution(global_path, tasks))
+    print(global_profit)
+    return global_path
 
 def fitness(path, tasks):
     time = 0
@@ -89,24 +98,26 @@ def fitness(path, tasks):
 
 
 
+def get_initial_solution(tasks, tabu):
+    """Returns a solution object with a randomized feasible solution"""
+    copy = tasks[:]
+    time = 0
+    path = []
+    while len(copy):
+        weights = [(c.get_profit(time+c.get_duration())*(60.0/c.get_duration())*(1440/c.get_deadline()))**8 for c in copy]
+        if weights == [0]*len(copy):
+            weights = [1]*len(copy)
+        next_task = random.choices(copy, weights)[0]
+        copy.remove(next_task)
+        time += next_task.get_duration()
+        path.append(next_task.get_task_id())
+    return path, hash('-'.join([str(i) for i in path]))
+    
 # def get_initial_solution(tasks):
 #     """Returns a solution object with a randomized feasible solution"""
-#     copy = tasks[:]
-#     time = 0
-#     path = []
-#     while len(copy):
-#         weights = [(c.get_profit(time+c.get_duration())*(60.0/c.get_duration())*(1000.0/c.get_deadline()))**2 for c in copy]
-#         next_task = random.choices(copy, weights)[0]
-#         copy.remove(next_task)
-#         time += next_task.get_duration()
-#         path.append(next_task.get_task_id())
-#     return path, hash('-'.join([str(i) for i in path]))
-    
-def get_initial_solution(tasks):
-    """Returns a solution object with a randomized feasible solution"""
-    shuffle = list(range(1, len(tasks)+1))
-    random.shuffle(shuffle)
-    return shuffle, hash('-'.join([str(i) for i in shuffle]))
+#     shuffle = list(range(1, len(tasks)+1))
+#     random.shuffle(shuffle)
+#     return shuffle, hash('-'.join([str(i) for i in shuffle]))
 
 # def get_best_neighboring(solution, tabu, tasks, max_profit):
 #     """Return the best neighboring solution of solution that is not tabu"""
@@ -146,13 +157,17 @@ def get_initial_solution(tasks):
 
 def get_neighbors(solution):
     neighbors = []
-    for i in range(20):
+    swap_tabu = {}
+    for i in range(50):
         new_solution = solution[:]
-        u, v, w = random.sample(range(0, len(new_solution)), 3)
-        new_u, new_v, new_w = new_solution[v], new_solution[u], new_solution[w]
-        new_solution[u] = new_v
-        new_solution[v] = new_w
-        new_solution[w] = new_u
+        u, v = random.sample(range(0, len(new_solution)), 2)
+        while ((u, v) in swap_tabu):
+            u, v = random.sample(range(0, len(new_solution)), 2)
+        swap_tabu[(u, v)] = 1
+        swap_tabu[(v, u)] = 1
+        new_u, new_v = new_solution[v], new_solution[u]
+        new_solution[u] = new_u
+        new_solution[v] = new_v
         neighbors.append(new_solution)
     return neighbors
 
@@ -180,7 +195,7 @@ def get_weights(solution, tasks):
 
 # Here's an example of how to run your solver.
 if __name__ == '__main__':
-    # tasks = read_input_file('inputs/large/large-291.in')
+    # tasks = read_input_file('inputs/large/large-16.in')
     # output = solve(tasks)
     # output_path = 'outputs/large/large-291.out'
     # write_output_file(output_path, output)

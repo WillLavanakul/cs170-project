@@ -27,61 +27,31 @@ def solve(tasks):
     Returns:
         output: list of igloos in order of polishing  
     """
-    tabu = {}
-    queue = []
-    initial, initial_hash = get_initial_solution(tasks, tabu)
-    tabu[initial_hash] = 1
-    max_profit = fitness(initial, tasks)[0]
-    tabu_initial = {initial_hash: 1}
-    max_path = initial
-    global_profit = 0
-    global_path = []
-    last_i = 0
-    for i in range(6000):
-        # Get neighbors from initiail and initialize local variables
-        neighbors = get_neighbors(initial)
-        local_profit = 0
-        local_path = []
-        local_hash = 0
-
-        # Update local variables with best neighbor
-        for neighbor in neighbors:
-            neighbor_profit = fitness(neighbor, tasks)[0]
-            neighbor_hash = hash('-'.join([str(i) for i in neighbor]))
-            if neighbor_profit > local_profit and neighbor_hash not in tabu:
-                local_profit = neighbor_profit
-                local_path = neighbor
-                local_hash = neighbor_hash
-        
-        # update global maximas if higher neighbor is found. Also redefine initial
-        if local_profit > max_profit:
-            last_i = i
-            max_profit = local_profit
-            max_path = local_path
-            initial = max_path
-        tabu[local_hash] = 1
-        tabu_initial[local_hash] = 1
-        queue.append(local_hash)
-        if len(queue) > 200:
-            tabu.pop(queue.pop(0))
-        if i - last_i > 200:
-            initial, initial_hash = get_initial_solution(tasks, tabu)
-            while initial_hash in tabu_initial:
-                print(initial_hash)
-                initial, initial_hash = get_initial_solution(tasks, tabu)
-            if max_profit > global_profit:
-                print(max_profit)
-                global_profit = max_profit
-                global_path = max_path
-            max_profit = 0
-            tabu[initial_hash] = 1
-            last_i = i
-    # print(fitness(max_path, tasks))
-    global_path = fitness(global_path, tasks)[1]
-    # print(fitness(max_path, tasks))
-    print(check_solution(global_path, tasks))
-    print(global_profit)
-    return global_path
+    best_profit = 0
+    best_path = []
+    pop_size = 1000
+    k = 20 # Size of tournament
+    m = 200 # Size of mating pool
+    e = 15 # Number of elites
+    population = initial_population(pop_size, tasks)
+    for i in range(1000):
+        population = rank_paths(population, tasks)
+        profit, path = fitness(population[0], tasks)
+        if profit > best_profit:
+            print(profit)
+            best_profit = profit
+            best_path = path
+        mating_pool = []
+        for i in range(m):
+            tournament = random.sample(population, k)
+            parent = max(tournament, key=lambda x:fitness(x, tasks))
+            mating_pool.append(parent)
+        mating_pool.sort(key=lambda x:fitness(x, tasks))
+        children = breed_next_population(mating_pool, e, pop_size)
+        population = mutationPopulation(children, 0.009)
+    
+    
+    
 
 def fitness(path, tasks):
     time = 0
@@ -97,21 +67,81 @@ def fitness(path, tasks):
     return profit, ret
 
 
+def get_path(tasks):
+    return random.sample(list(range(1, len(tasks)+1)), len(tasks))
 
-def get_initial_solution(tasks, tabu):
+def initial_population(pop_size, tasks):
     """Returns a solution object with a randomized feasible solution"""
-    copy = tasks[:]
-    time = 0
-    path = []
-    while len(copy):
-        weights = [(c.get_profit(time+c.get_duration())*(60.0/c.get_duration())*(1440/c.get_deadline()))**8 for c in copy]
-        if weights == [0]*len(copy):
-            weights = [1]*len(copy)
-        next_task = random.choices(copy, weights)[0]
-        copy.remove(next_task)
-        time += next_task.get_duration()
-        path.append(next_task.get_task_id())
-    return path, hash('-'.join([str(i) for i in path]))
+    population = []
+    for i in range(pop_size):
+        path = get_path(tasks)
+        population.append(path)
+    return population
+
+def rank_paths(population, tasks):
+    fitness_map = {}
+    for i in range(len(population)):
+        fitness_map[i] = fitness(population[i], tasks)
+    sorted_population = list(range(len(population)))
+    sorted_population.sort(key = lambda x : fitness_map[x], reverse=True)
+    return [population[i] for i in sorted_population]
+
+def breed(parent1, parent2):
+    used = {}
+    child = [0]*len(parent1)
+
+    geneA = int(random.random() * len(parent1))
+    geneB = int(random.random() * len(parent1))
+
+    startGene = min(geneA, geneB)
+    endGene = max(geneA, geneB)
+
+    for i in range(startGene, endGene):
+        child[i] = parent1[i]
+        used[parent1[i]] = 1
+    parent2_index = 0
+    child_index = 0
+    while child_index < startGene:
+        if parent2[parent2_index] not in used:
+            child[child_index] = parent2[parent2_index]
+            child_index += 1
+        parent2_index += 1
+    child_index = endGene
+    while child_index < len(child):
+        if parent2[parent2_index] not in used:
+            child[child_index] = parent2[parent2_index]
+            child_index += 1
+        parent2_index += 1
+    return child
+
+def breed_next_population(mating_pool, elites, pop_size):
+    ret = []
+    for i in range(0, elites):
+        ret.append(mating_pool[i])
+    for i in range(0, pop_size-elites):
+        parents = random.sample(mating_pool, 2)
+        ret.append(breed(parents[0], parents[1]))
+    return ret
+
+def mutate(individual, mutationRate):
+    for swapped in range(len(individual)):
+        if(random.random() < mutationRate):
+            swapWith = int(random.random() * len(individual))
+            
+            task1 = individual[swapped]
+            task2 = individual[swapWith]
+            
+            individual[swapped] = task2
+            individual[swapWith] = task1
+    return individual
+
+def mutationPopulation(population, mutationRate):
+    mutatedPop = []
+    
+    for ind in range(0, len(population)):
+        mutatedInd = mutate(population[ind], mutationRate)
+        mutatedPop.append(mutatedInd)
+    return mutatedPop
     
 # def get_initial_solution(tasks):
 #     """Returns a solution object with a randomized feasible solution"""
@@ -155,6 +185,8 @@ def get_initial_solution(tasks, tabu):
 #             local_neighbor = neighbor
 #     return local_neighbor
 
+
+
 def get_neighbors(solution):
     neighbors = []
     swap_tabu = {}
@@ -195,14 +227,14 @@ def get_weights(solution, tasks):
 
 # Here's an example of how to run your solver.
 if __name__ == '__main__':
-    # tasks = read_input_file('inputs/large/large-16.in')
-    # output = solve(tasks)
+    tasks = read_input_file('inputs/small/small-10.in')
+    output = solve(tasks)
     # output_path = 'outputs/large/large-291.out'
     # write_output_file(output_path, output)
-    for input_path in os.listdir('inputs'):
-       for file_name in os.listdir('inputs/' + input_path):
-            output_path = 'outputs/' + input_path + "/" + file_name[:len(file_name)-3] + '.out'
-            tasks = read_input_file('inputs/' + input_path + "/" + file_name)
-            print('inputs/' + input_path + "/" + file_name)
-            output = solve(tasks)
-            write_output_file(output_path, output)
+    # for input_path in os.listdir('inputs'):
+    #    for file_name in os.listdir('inputs/' + input_path):
+    #         output_path = 'outputs/' + input_path + "/" + file_name[:len(file_name)-3] + '.out'
+    #         tasks = read_input_file('inputs/' + input_path + "/" + file_name)
+    #         print('inputs/' + input_path + "/" + file_name)
+    #         output = solve(tasks)
+    #         write_output_file(output_path, output)
